@@ -1,5 +1,5 @@
 from django.shortcuts import render
-
+from django.http import HttpResponseNotFound
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 
@@ -40,7 +40,7 @@ class BankDetailsWithIFSC(APIView):
 
 class BankDetailsWithBranchCity(APIView):
     permission_class = (IsAuthenticated, )
-    def get(self, request, bank, city):
+    def get(self, request):
         limit = 10
         offset = 0
         try:
@@ -53,8 +53,16 @@ class BankDetailsWithBranchCity(APIView):
             offset = int(offset)
         except:
             offset = 0
-        branch_qset = Branches.objects.filter( city__iexact=city, bank__name__icontains=bank)[offset:offset+limit]
+
+        bank        = request.GET.get('bank')
+        city        = request.GET.get('city')
+        # print("bank:%s, city:%s, limit:%s, offset:%s"%(bank, city, limit, offset))
+        if not city or not bank:
+            return HttpResponseNotFound("Invalid input")
+        branch_qset = Branches.objects.filter(city__iexact=city, bank__name__icontains=bank)
+        branch_qset = branch_qset[offset:offset+limit]
         # branch_qset = Branches.objects.get(city__iexact=city, bank__name__icontains=bank)#[offset:offset+limit]
+        # print("branch_qset:", branch_qset.query)
         # print("branch_qset:", branch_qset[offset:offset+limit])
         serializer = BranchSerializer(branch_qset, many=True)
         return JsonResponse(serializer.data, safe=False)
